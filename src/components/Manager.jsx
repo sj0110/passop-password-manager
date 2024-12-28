@@ -5,6 +5,7 @@ import { FaRegEdit } from "react-icons/fa";
 import { IoCopyOutline, IoCopy } from "react-icons/io5";
 import { ToastContainer, toast } from 'react-toastify';
 import { AiOutlineDelete } from "react-icons/ai";
+import { v4 as uuidv4 } from 'uuid';
 
 const Manager = () => {
     const passwordRef = useRef();
@@ -37,12 +38,22 @@ const Manager = () => {
         }, 100); // Highlight the copied icon 
     };
     
+    const fetchPasswords = async () => {
+        const res = await fetch('http://localhost:3000/');
+        const passwords = await res.json();
+        if (!passwords.error) {
+            setPasswordArr(passwords);
+        } else {
+            console.error("Failed to fetch passwords", passwords.error);
+        }
+    }
 
     useEffect(() => {
-        const passwords = localStorage.getItem("passwords");
-        if (passwords) {
-            setPasswordArr(JSON.parse(passwords));
-        }
+        fetchPasswords();
+        // const passwords = localStorage.getItem("passwords");
+        // if (passwords) {
+        //     setPasswordArr(JSON.parse(passwords));
+        // }
     }, []);
 
     const handleToggle = () => {
@@ -50,7 +61,7 @@ const Manager = () => {
         passwordRef.current.type = eyeToggle ? "password" : "text";
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const { site, username, password } = form;
 
@@ -59,12 +70,18 @@ const Manager = () => {
             return;
         }
 
-        const newPassword = { site, username, password };
+        const newPassword = { id: uuidv4(), site, username, password };
         setPasswordArr((prevPasswords) => {
             const updatedPasswords = [...prevPasswords, newPassword];
             localStorage.setItem("passwords", JSON.stringify(updatedPasswords));
             return updatedPasswords;
         });
+
+        await fetch('http://localhost:3000/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPassword),
+        })
 
         setForm({ site: "", username: "", password: "" });
     };
@@ -106,11 +123,16 @@ const Manager = () => {
         }));
     };
 
-    const handleDelete = (index) => {
+    const handleDelete = async (index) => {
         if (window.confirm("Are you sure you want to delete this password?")) {
             const updatedPasswordArr = passwordArr.filter((_, idx) => idx !== index);
             setPasswordArr(updatedPasswordArr);
-            localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+            // passwordArr[index].id;
+            // localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+            await fetch(`http://localhost:3000/${passwordArr[index].id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+            })
             toast.info("Password deleted successfully!", {
                 position: "bottom-right",
                 autoClose: 2000,
@@ -123,7 +145,7 @@ const Manager = () => {
         }
     };
 
-    const handleEdit = (index) => {
+    const handleEdit = async (index) => {
         if((form.site !== "" || form.username !== "" || form.password !== ""))
         {
             if(window.confirm("Do you want to discard your current changes?") === true){
@@ -132,7 +154,11 @@ const Manager = () => {
 
                 const updatedPasswordArr = passwordArr.filter((_, idx) => idx !== index);
                 setPasswordArr(updatedPasswordArr);
-                localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+                // localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+                await fetch(`http://localhost:3000/${passwordArr[index].id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                })
             }
             
         }
@@ -143,7 +169,11 @@ const Manager = () => {
 
             const updatedPasswordArr = passwordArr.filter((_, idx) => idx !== index);
             setPasswordArr(updatedPasswordArr);
-            localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+            // localStorage.setItem("passwords", JSON.stringify(updatedPasswordArr));
+            await fetch(`http://localhost:3000/${passwordArr[index].id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+            })
         }
         
     };
@@ -212,6 +242,7 @@ const Manager = () => {
                                         value={form.username}
                                         placeholder="Enter the username"
                                         className="w-full px-4 py-2 border rounded-full focus:ring-2 focus:ring-blue-500 text-sm"
+                                        autoComplete="username"
                                     />
                                     {errors.username && (
                                         <p className="text-red-500 text-xs pl-4 mt-2">{errors.username}</p>
@@ -226,6 +257,7 @@ const Manager = () => {
                                         value={form.password}
                                         placeholder="Enter the password"
                                         className="w-full px-4 py-2 border rounded-full focus:ring-2 focus:ring-blue-500 text-sm"
+                                        autoComplete="current-password"
                                     />
                                     {errors.password && (
                                         <p className="text-red-500 text-xs pl-4 mt-2">{errors.password}</p>
@@ -316,7 +348,7 @@ const Manager = () => {
                                                 </td>
                                                 <td className="py-3 px-3 border max-w-[200px]">
                                                     <div className="flex justify-between items-center gap-2">
-                                                        <p className="w-4/5 truncate" title={item.password}>{item.password}</p>
+                                                        <p className="w-4/5 truncate" title={'Click on copy icon to copy the password'}>{'\u2217'.repeat(item.password.length)}</p>
                                                         <span
                                                             className={`${copiedCell?.index === index && copiedCell?.field === 'password'
                                                                     ? "text-blue-600"
